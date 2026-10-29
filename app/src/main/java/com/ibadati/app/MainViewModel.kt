@@ -9,6 +9,7 @@ import com.ibadati.app.data.Backup
 import com.ibadati.app.data.DayLog
 import com.ibadati.app.data.Khatma
 import com.ibadati.app.data.PrayerLog
+import com.ibadati.app.data.Prayers
 import com.ibadati.app.data.Quran
 import com.ibadati.app.data.Settings
 import com.ibadati.app.data.SettingsRepository
@@ -100,7 +101,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val day = state.value.selected
         viewModelScope.launch {
             writeLock.withLock {
-                val current = state.value.records.prayer(day, index)
+                val current = dao.prayer(day, index) ?: Prayers.default(day, index)
                 dao.upsertPrayer(change(current))
             }
         }
@@ -129,7 +130,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val day = state.value.selected
         viewModelScope.launch {
             writeLock.withLock {
-                dao.upsertDay(change(state.value.records.day(day)))
+                dao.upsertDay(change(dao.day(day) ?: DayLog(day)))
             }
         }
     }
@@ -155,7 +156,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             var completed = false
             writeLock.withLock {
-                val existing = state.value.records.day(day)
+                val existing = dao.day(day) ?: DayLog(day)
                 var khatmaId = existing.khatmaId
                 val khatmas = dao.allKhatmas()
                 if (khatmaId == 0L || khatmas.none { it.id == khatmaId }) {
@@ -176,7 +177,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun clearQuran() = updateDay { it.copy(quranFrom = 0, quranTo = 0) }
+    fun clearQuran() {
+        val day = state.value.selected
+        viewModelScope.launch {
+            writeLock.withLock {
+                val existing = dao.day(day) ?: return@withLock
+                dao.upsertDay(existing.copy(quranFrom = 0, quranTo = 0))
+                // If this reading had completed its khatma, reopen it.
+                val k = dao.allKhatmas().firstOrNull { it.id == existing.khatmaId }
+                if (k != null && k.endDay == day && existing.quranTo == Quran.PAGES) {
+                    dao.putKhatma(k.copy(endDay = null))
+                }
+            }
+        }
+    }
 
     fun startNewKhatma() {
         viewModelScope.launch {

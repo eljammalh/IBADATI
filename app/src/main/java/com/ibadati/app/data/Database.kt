@@ -92,6 +92,12 @@ interface WorshipDao {
     @Query("SELECT * FROM khatmas ORDER BY id")
     suspend fun allKhatmas(): List<Khatma>
 
+    @Query("SELECT * FROM days WHERE day = :day")
+    suspend fun day(day: Long): DayLog?
+
+    @Query("SELECT * FROM prayers WHERE day = :day AND prayer = :prayer")
+    suspend fun prayer(day: Long, prayer: Int): PrayerLog?
+
     @Upsert
     suspend fun upsertDay(d: DayLog)
 
