@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Mosque: dome, base with arched door, minaret -->
+    <path android:fillColor="#FF000000" android:fillType="evenOdd"
+        android:pathData="M10,2.5 L10.6,4.1 C13.6,5 15.5,7.4 15.5,10 L4.5,10 C4.5,7.4 6.4,5 9.4,4.1 Z M4,11 L16,11 L16,21 L4,21 Z M8.2,21 L8.2,17 C8.2,15.9 9,15.1 10,15.1 C11,15.1 11.8,15.9 11.8,17 L11.8,21 Z" />
+    <path android:fillColor="#FF000000"
+        android:pathData="M18.2,6 L19.8,6 L19.8,21 L17.4,21 L17.4,9 Z M18.6,3 L19.6,5.2 L17.6,5.2 Z" />
+</vector>
