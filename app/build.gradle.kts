@@ -17,8 +17,19 @@ android {
         versionName = "1.1"
     }
 
+    // One fixed signing key, so every GitHub build installs over the previous one.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("keystore/ibadati.jks")
+            storePassword = "U11Napa56rbEss9EwGVpjg7v"
+            keyAlias = "ibadati"
+            keyPassword = "U11Napa56rbEss9EwGVpjg7v"
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
