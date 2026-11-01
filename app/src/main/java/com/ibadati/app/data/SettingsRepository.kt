@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,12 +20,14 @@ object Reminder {
     const val EVENING = "evening"
     const val QURAN = "quran"
     const val KAHF = "kahf"
-    val TYPES = listOf(MORNING, EVENING, QURAN, KAHF)
+    const val FASTING = "fasting"
+    val TYPES = listOf(MORNING, EVENING, QURAN, KAHF, FASTING)
 
     fun defaultTime(type: String): Pair<Int, Int> = when (type) {
         MORNING -> 6 to 30
         EVENING -> 17 to 30
         QURAN -> 21 to 0
+        FASTING -> 20 to 30
         else -> 10 to 0
     }
 }
@@ -46,6 +49,10 @@ data class Settings(
     val istighfarGoal: Int = 100,
     val salawatGoal: Int = 100,
     val quranGoal: Int = 5,
+    /** Salted hash of the sins-tab PIN ("salt:hash"); null until the user creates one. */
+    val sinsPin: String? = null,
+    /** How many completed 40-day challenges have already been celebrated. */
+    val challengesSeen: Int = 0,
     val reminders: Map<String, ReminderSetting> = Reminder.TYPES.associateWith {
         val (h, m) = Reminder.defaultTime(it)
         ReminderSetting(false, h, m)
@@ -63,6 +70,8 @@ class SettingsRepository(private val context: Context) {
         val istGoal = intPreferencesKey("goal_istighfar")
         val salGoal = intPreferencesKey("goal_salawat")
         val quranGoal = intPreferencesKey("goal_quran")
+        val sinsPin = stringPreferencesKey("sins_pin")
+        val challengesSeen = intPreferencesKey("challenges_seen")
         fun remOn(t: String) = booleanPreferencesKey("rem_${t}_on")
         fun remH(t: String) = intPreferencesKey("rem_${t}_h")
         fun remM(t: String) = intPreferencesKey("rem_${t}_m")
@@ -82,6 +91,8 @@ class SettingsRepository(private val context: Context) {
             istighfarGoal = p[K.istGoal] ?: d.istighfarGoal,
             salawatGoal = p[K.salGoal] ?: d.salawatGoal,
             quranGoal = p[K.quranGoal] ?: d.quranGoal,
+            sinsPin = p[K.sinsPin],
+            challengesSeen = p[K.challengesSeen] ?: d.challengesSeen,
             reminders = Reminder.TYPES.associateWith { t ->
                 val (h, m) = Reminder.defaultTime(t)
                 ReminderSetting(p[K.remOn(t)] ?: false, p[K.remH(t)] ?: h, p[K.remM(t)] ?: m)
@@ -112,6 +123,12 @@ class SettingsRepository(private val context: Context) {
         }
         context.dataStore.edit { it[key] = v }
     }
+
+    suspend fun setSinsPin(hash: String?) {
+        context.dataStore.edit { if (hash == null) it.remove(K.sinsPin) else it[K.sinsPin] = hash }
+    }
+
+    suspend fun setChallengesSeen(n: Int) { context.dataStore.edit { it[K.challengesSeen] = n } }
 
     suspend fun setReminder(type: String, enabled: Boolean) {
         context.dataStore.edit { it[K.remOn(type)] = enabled }

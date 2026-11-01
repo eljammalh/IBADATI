@@ -52,6 +52,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
+import com.ibadati.app.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -322,14 +326,15 @@ fun StatusDialog(prayerName: String, current: Int, onDismiss: () -> Unit, onPick
             TextButton(onClick = onDismiss) { Text(L.cancel) }
         },
     ) {
-        StatusOption(L.statusJamaa, L.statusJamaaHint, wc.jamaa, Icons.Filled.Star, current == Status.JAMAA) { onPick(Status.JAMAA) }
-        StatusOption(L.statusOnTime, L.statusOnTimeHint, wc.onTime, Icons.Filled.Check, current == Status.ON_TIME) { onPick(Status.ON_TIME) }
-        StatusOption(L.statusMissed, L.statusMissedHint, wc.missed, Icons.Filled.Close, current == Status.MISSED) { onPick(Status.MISSED) }
+        StatusOption(L.statusMosque, L.statusMosqueHint, wc.mosque, painterResource(R.drawable.ic_tab_prayer), current == Status.MOSQUE) { onPick(Status.MOSQUE) }
+        StatusOption(L.statusJamaa, L.statusJamaaHint, wc.jamaa, rememberVectorPainter(Icons.Filled.Star), current == Status.JAMAA) { onPick(Status.JAMAA) }
+        StatusOption(L.statusOnTime, L.statusOnTimeHint, wc.onTime, rememberVectorPainter(Icons.Filled.Check), current == Status.ON_TIME) { onPick(Status.ON_TIME) }
+        StatusOption(L.statusMissed, L.statusMissedHint, wc.missed, rememberVectorPainter(Icons.Filled.Close), current == Status.MISSED) { onPick(Status.MISSED) }
     }
 }
 
 @Composable
-private fun StatusOption(title: String, hint: String, color: Color, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
+private fun StatusOption(title: String, hint: String, color: Color, icon: Painter, selected: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -341,7 +346,7 @@ private fun StatusOption(title: String, hint: String, color: Color, icon: ImageV
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(40.dp).clip(CircleShape).background(color), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = Color.White)
+            Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(14.dp))
         Column {

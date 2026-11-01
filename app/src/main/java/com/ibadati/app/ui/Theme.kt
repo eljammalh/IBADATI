@@ -88,6 +88,7 @@ private val DarkColors = darkColorScheme(
 /** Colors for the prayer status highlight and charts. */
 @Immutable
 data class WorshipColors(
+    val mosque: Color,
     val jamaa: Color,
     val onTime: Color,
     val missed: Color,
@@ -95,6 +96,7 @@ data class WorshipColors(
     val dark: Boolean,
 ) {
     fun status(s: Int): Color? = when (s) {
+        Status.MOSQUE -> mosque
         Status.JAMAA -> jamaa
         Status.ON_TIME -> onTime
         Status.MISSED -> missed
@@ -103,16 +105,18 @@ data class WorshipColors(
 }
 
 private val LightWorship = WorshipColors(
+    mosque = Color(0xFF00796B),
     jamaa = Color(0xFFC9971F),
-    onTime = Color(0xFF2E9A66),
+    onTime = Color(0xFF5AAE3C),
     missed = Color(0xFFD04A3A),
     gold = Color(0xFFB8892E),
     dark = false,
 )
 
 private val DarkWorship = WorshipColors(
+    mosque = Color(0xFF2BB59D),
     jamaa = Color(0xFFE6BB52),
-    onTime = Color(0xFF52C48C),
+    onTime = Color(0xFF86CF5E),
     missed = Color(0xFFF07563),
     gold = Color(0xFFE6C27A),
     dark = true,

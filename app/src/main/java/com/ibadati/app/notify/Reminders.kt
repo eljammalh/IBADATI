@@ -24,6 +24,9 @@ import com.ibadati.app.data.Reminder
 import com.ibadati.app.data.SettingsRepository
 import com.ibadati.app.ui.Lang
 import com.ibadati.app.ui.reminderText
+import com.ibadati.app.ui.fastingReminder
+import com.ibadati.app.logic.Fasting
+import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import java.time.DayOfWeek
 import java.time.Duration
@@ -77,7 +80,15 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         val type = inputData.getString("type") ?: Reminder.MORNING
         val settings = SettingsRepository(ctx).settings.first()
-        val (title, text) = Lang(settings.arabic, settings.arabicDigits).reminderText(type)
+        val lang = Lang(settings.arabic, settings.arabicDigits)
+        val (title, text) = if (type == Reminder.FASTING) {
+            // Only remind on the evening before a Monday, Thursday or White Day.
+            val kinds = Fasting.kinds(LocalDate.now().plusDays(1).toEpochDay())
+            if (kinds.isEmpty()) return Result.success()
+            lang.fastingReminder(kinds)
+        } else {
+            lang.reminderText(type)
+        }
         val id = 100 + Reminder.TYPES.indexOf(type).coerceAtLeast(0)
         val intent = Intent(ctx, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

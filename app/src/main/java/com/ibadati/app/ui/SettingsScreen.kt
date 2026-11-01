@@ -52,6 +52,7 @@ fun SettingsScreen(state: UiState, vm: MainViewModel, onBack: () -> Unit) {
     var timeFor by remember { mutableStateOf<String?>(null) }
     var pendingReminder by remember { mutableStateOf<String?>(null) }
     var confirmRestore by remember { mutableStateOf<android.net.Uri?>(null) }
+    var changingPin by remember { mutableStateOf(false) }
 
     BackHandler(onBack = onBack)
 
@@ -115,6 +116,7 @@ fun SettingsScreen(state: UiState, vm: MainViewModel, onBack: () -> Unit) {
                         Reminder.MORNING -> L.remMorning
                         Reminder.EVENING -> L.remEvening
                         Reminder.QURAN -> L.remQuran
+                        Reminder.FASTING -> L.remFasting
                         else -> L.remKahf
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -145,6 +147,20 @@ fun SettingsScreen(state: UiState, vm: MainViewModel, onBack: () -> Unit) {
                 }
             }
 
+            SectionCard(title = L.secSins) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(enabled = st.sinsPin != null) { changingPin = true }.padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(L.changePin, style = MaterialTheme.typography.bodyLarge)
+                        if (st.sinsPin == null) {
+                            Text(L.noPinYet, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+            }
+
             SectionCard(title = L.backup) {
                 Text(L.backupHint, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -160,7 +176,7 @@ fun SettingsScreen(state: UiState, vm: MainViewModel, onBack: () -> Unit) {
             SectionCard(title = L.about) {
                 Text(L.appName, fontFamily = Amiri, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text(L.aboutText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(L.digits("1.0"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(L.digits("1.1"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -185,6 +201,12 @@ fun SettingsScreen(state: UiState, vm: MainViewModel, onBack: () -> Unit) {
                 timeFor = null
             }
         }
+    }
+    if (changingPin) {
+        ChangePinDialog(vm, onDone = {
+            changingPin = false
+            toast(L.pinChanged)
+        }, onDismiss = { changingPin = false })
     }
     confirmRestore?.let { uri ->
         AppDialog(

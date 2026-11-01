@@ -64,6 +64,20 @@ import com.ibadati.app.ui.LocalWorshipColors
 import com.ibadati.app.ui.PrayersScreen
 import com.ibadati.app.ui.QuranScreen
 import com.ibadati.app.ui.ReportsScreen
+import com.ibadati.app.ui.ChallengeScreen
+import com.ibadati.app.ui.FastingScreen
+import com.ibadati.app.ui.HifzScreen
+import com.ibadati.app.ui.MoreScreen
+import com.ibadati.app.ui.ReadingScreen
+import com.ibadati.app.ui.Section
+import com.ibadati.app.ui.SinsScreen
+import com.ibadati.app.ui.sectionTitle
+import com.ibadati.app.ui.tabMore
+import com.ibadati.app.ui.back
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.lifecycle.ViewModelProvider
 import com.ibadati.app.ui.SettingsScreen
 import com.ibadati.app.ui.WelcomeScreen
 import com.ibadati.app.ui.appName
@@ -76,6 +90,12 @@ import com.ibadati.app.ui.tabQuran
 import com.ibadati.app.ui.tabReports
 
 class MainActivity : ComponentActivity() {
+    /** Lock the private section whenever the app leaves the screen. */
+    override fun onStop() {
+        super.onStop()
+        ViewModelProvider(this)[MainViewModel::class.java].lockSins()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -119,14 +139,24 @@ private data class Tab(val label: String, val icon: Int)
 private fun AppRoot(state: UiState, vm: MainViewModel) {
     val L = LocalLang.current
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var section by rememberSaveable { mutableStateOf<String?>(null) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    val sinsUnlocked by vm.sinsUnlocked.collectAsStateWithLifecycle()
     val tabs = listOf(
         Tab(L.tabPrayers, R.drawable.ic_tab_prayer),
         Tab(L.tabAthkar, R.drawable.ic_tab_athkar),
         Tab(L.tabQuran, R.drawable.ic_tab_quran),
         Tab(L.tabDhikr, R.drawable.ic_tab_dhikr),
-        Tab(L.tabReports, R.drawable.ic_tab_reports),
+        Tab(L.tabMore, R.drawable.ic_tab_more),
     )
+    val openSection = if (tab == MORE) section else null
+
+    // The private section locks again as soon as it is left.
+    LaunchedEffect(openSection) {
+        if (openSection != Section.SINS) vm.lockSins()
+    }
+    BackHandler(enabled = !showSettings && openSection != null) { section = null }
+    BackHandler(enabled = !showSettings && openSection == null && tab != 0) { tab = 0 }
 
     AnimatedContent(
         targetState = showSettings,
@@ -151,24 +181,38 @@ private fun AppRoot(state: UiState, vm: MainViewModel) {
                         Modifier
                             .fillMaxWidth()
                             .statusBarsPadding()
-                            .padding(start = 20.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
+                            .padding(start = if (openSection != null) 4.dp else 20.dp, end = 8.dp, top = 6.dp, bottom = 2.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Column(Modifier.weight(1f)) {
+                        if (openSection != null) {
+                            IconButton(onClick = { section = null }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = L.back)
+                            }
                             Text(
-                                L.appName,
-                                fontFamily = Amiri,
-                                fontSize = 28.sp,
+                                sectionTitle(openSection),
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        } else {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    L.appName,
+                                    fontFamily = Amiri,
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                            Text(
+                                tabs[tab].label,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = LocalWorshipColors.current.gold,
+                                fontWeight = FontWeight.SemiBold,
                             )
                         }
-                        Text(
-                            tabs[tab].label,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = LocalWorshipColors.current.gold,
-                            fontWeight = FontWeight.SemiBold,
-                        )
                         Spacer(Modifier.width(4.dp))
                         IconButton(onClick = { showSettings = true }) {
                             Icon(Icons.Filled.Settings, contentDescription = L.settings, tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -180,7 +224,10 @@ private fun AppRoot(state: UiState, vm: MainViewModel) {
                         tabs.forEachIndexed { i, t ->
                             NavigationBarItem(
                                 selected = tab == i,
-                                onClick = { tab = i },
+                                onClick = {
+                                    if (i == MORE && tab == MORE) section = null
+                                    tab = i
+                                },
                                 icon = { Icon(painterResource(t.icon), contentDescription = null) },
                                 label = { Text(t.label, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 11.sp) },
                                 colors = NavigationBarItemDefaults.colors(
@@ -193,21 +240,30 @@ private fun AppRoot(state: UiState, vm: MainViewModel) {
                     }
                 },
             ) { padding ->
+                val page = if (tab == MORE) "more:" + (section ?: "") else "tab:$tab"
                 AnimatedContent(
-                    targetState = tab,
+                    targetState = page,
                     transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(150)) },
                     modifier = Modifier.padding(padding),
                     label = "tabs",
-                ) { t ->
-                    when (t) {
-                        0 -> PrayersScreen(state, vm)
-                        1 -> AthkarScreen(state, vm)
-                        2 -> QuranScreen(state, vm)
-                        3 -> DhikrScreen(state, vm)
-                        else -> ReportsScreen(state)
+                ) { p ->
+                    when (p) {
+                        "tab:0" -> PrayersScreen(state, vm)
+                        "tab:1" -> AthkarScreen(state, vm)
+                        "tab:2" -> QuranScreen(state, vm)
+                        "tab:3" -> DhikrScreen(state, vm)
+                        "more:" + Section.CHALLENGE -> ChallengeScreen(state, vm)
+                        "more:" + Section.FASTING -> FastingScreen(state, vm)
+                        "more:" + Section.HIFZ -> HifzScreen(state, vm)
+                        "more:" + Section.READING -> ReadingScreen(state, vm)
+                        "more:" + Section.REPORTS -> ReportsScreen(state)
+                        "more:" + Section.SINS -> SinsScreen(state, vm, sinsUnlocked)
+                        else -> MoreScreen(state) { section = it }
                     }
                 }
             }
         }
     }
 }
+
+private const val MORE = 4

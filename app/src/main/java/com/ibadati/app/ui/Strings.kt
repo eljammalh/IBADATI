@@ -51,6 +51,8 @@ val Lang.nightPrayers get() = t("Night prayers", "صلاة الليل")
 val Lang.dailyPrayers get() = t("Daily prayers", "الصلوات الخمس")
 val Lang.prayedToday get() = t("prayers prayed", "صلوات مؤداة")
 val Lang.howDidYouPray get() = t("How did you pray it?", "كيف صليتها؟")
+val Lang.statusMosque get() = t("In the mosque", "في المسجد")
+val Lang.statusMosqueHint get() = t("Prayed in congregation at the mosque", "صليتها جماعة في المسجد")
 val Lang.statusJamaa get() = t("In Jama'a", "جماعة")
 val Lang.statusOnTime get() = t("On time", "في الوقت")
 val Lang.statusMissed get() = t("Missed", "فائتة")
@@ -72,6 +74,7 @@ fun Lang.rakaatCount(c: Int): String = if (!ar) "${n(c)} raka'at" else when (c) 
     else -> "${n(c)} ركعة"
 }
 fun Lang.statusLabel(s: Int) = when (s) {
+    Status.MOSQUE -> statusMosque
     Status.JAMAA -> statusJamaa
     Status.ON_TIME -> statusOnTime
     Status.MISSED -> statusMissed
@@ -149,6 +152,7 @@ val Lang.reset get() = t("Reset", "تصفير")
 val Lang.dhikrHeader get() = t("Istighfar & Salawat", "الاستغفار والصلاة على النبي ﷺ")
 
 // ---- Reports ----
+val Lang.rangeToday get() = t("Today", "اليوم")
 val Lang.rangeWeek get() = t("Week", "أسبوع")
 val Lang.rangeMonth get() = t("Month", "شهر")
 val Lang.rangeYear get() = t("Year", "سنة")
@@ -237,4 +241,166 @@ fun Lang.reminderText(type: String): Pair<String, String> = when (type) {
     "evening" -> t("Evening athkar", "أذكار المساء") to t("Time for the evening athkar.", "حان وقت أذكار المساء.")
     "quran" -> t("Quran reading", "ورد القرآن") to t("Have you read your Quran pages today?", "هل قرأت وردك من القرآن اليوم؟")
     else -> t("Surah Al-Kahf", "سورة الكهف") to t("It's Friday. Don't forget Surah Al-Kahf.", "إنها الجمعة. لا تنسَ قراءة سورة الكهف.")
+}
+
+// ---- Navigation (More) ----
+val Lang.tabMore get() = t("More", "المزيد")
+val Lang.secChallenge get() = t("40-Day Challenge", "تحدي الأربعين")
+val Lang.secFasting get() = t("Fasting", "الصيام")
+val Lang.secHifz get() = t("Memorization", "الحفظ")
+val Lang.secReading get() = t("Reading", "القراءة")
+val Lang.secSins get() = t("Muhasaba", "محاسبة النفس")
+val Lang.secChallengeHint get() = t("40 days in the mosque", "أربعون يومًا في المسجد")
+val Lang.secFastingHint get() = t("Mondays, Thursdays & White Days", "الاثنين والخميس والأيام البيض")
+val Lang.secHifzHint get() = t("Surahs you've memorized", "السور التي حفظتها")
+val Lang.secReadingHint get() = t("Books you're reading", "الكتب التي تقرؤها")
+val Lang.secSinsHint get() = t("Private · PIN protected", "خاص · محمي برمز")
+val Lang.secReportsHint get() = t("Your progress & charts", "تقدمك والرسوم البيانية")
+
+// ---- 40-day challenge ----
+val Lang.hadithTranslation get() = t(
+    "\u201CWhoever prays to Allah for forty days in congregation, catching the opening takbir, two freedoms are written for him: freedom from the Fire and freedom from hypocrisy.\u201D (Tirmidhi)",
+    "",
+)
+fun Lang.dayOfForty(c: Int) = t("Day ${n(c)} of ${n(40)}", "اليوم ${n(c)} من ${n(40)}")
+fun Lang.daysLeft(n: Int) = t("${daysCount(n)} to go", "متبقٍ ${daysCount(n)}")
+val Lang.challengeRule get() = t(
+    "A day counts when all 5 prayers are marked \u201CIn the mosque\u201D in the Prayers tab. Missing a day restarts the challenge.",
+    "يُحتسب اليوم عندما تُسجَّل الصلوات الخمس «في المسجد» في تبويب الصلوات. وإذا فات يومٌ يبدأ التحدي من جديد.",
+)
+val Lang.todayCounts get() = t("Today counts ✓", "اليوم محتسب ✓")
+val Lang.todayPending get() = t("Today: pray all 5 in the mosque", "اليوم: صلِّ الخمس في المسجد")
+val Lang.highestStreak get() = t("Highest streak", "أعلى سلسلة")
+val Lang.challengesCompleted get() = t("Challenges completed", "تحديات مكتملة")
+fun Lang.startedOn(d: String) = t("Started $d", "بدأ في $d")
+val Lang.notStarted get() = t("Start today by praying all 5 prayers in the mosque.", "ابدأ اليوم بأداء الصلوات الخمس في المسجد.")
+val Lang.challengeDoneTitle get() = t("40 days complete!", "أتممت الأربعين!")
+val Lang.challengeDoneText get() = t(
+    "May Allah write for you freedom from the Fire and freedom from hypocrisy.",
+    "نسأل الله أن يكتب لك براءةً من النار وبراءةً من النفاق.",
+)
+val Lang.completedOn get() = t("Completed", "اكتمل")
+val Lang.ameen get() = t("Ameen", "آمين")
+
+// ---- Fasting ----
+val Lang.monday get() = t("Monday", "الاثنين")
+val Lang.thursday get() = t("Thursday", "الخميس")
+val Lang.whiteDays get() = t("White Days", "الأيام البيض")
+val Lang.fasted get() = t("Fasted", "صُمت")
+val Lang.fastedThisMonth get() = t("Days fasted this month", "أيام صمتها هذا الشهر")
+val Lang.sunnahFasts get() = t("Sunnah fasts", "صيام السنة")
+val Lang.nextSunnahFast get() = t("Next Sunnah fast", "صيام السنة القادم")
+val Lang.tapDayToMark get() = t("Tap a day to mark that you fasted.", "اضغط على اليوم لتسجيل صيامه.")
+val Lang.fastingHadith get() = t(
+    "Deeds are presented on Mondays and Thursdays, and I love that my deeds are presented while I am fasting. (Tirmidhi)",
+    "«تُعرَضُ الأعمالُ يومَ الاثنينِ والخميسِ، فأُحبُّ أن يُعرَضَ عملي وأنا صائمٌ» رواه الترمذي",
+)
+val Lang.fastingTotal get() = t("Days fasted", "أيام الصيام")
+val Lang.remFasting get() = t("Sunnah fasting (evening before)", "صيام السنة (مساء اليوم السابق)")
+fun Lang.ofN(a: Int, b: Int) = digits("$a/$b")
+
+// ---- Memorization ----
+val Lang.surahsMemorized get() = t("Surahs", "السور")
+val Lang.pagesMemorized get() = t("Pages", "الصفحات")
+val Lang.juzMemorized get() = t("Complete juz", "أجزاء كاملة")
+val Lang.ofTheQuran get() = t("of the Quran memorized", "من القرآن محفوظ")
+val Lang.searchSurah get() = t("Search surahs", "ابحث عن سورة")
+val Lang.juzGrid get() = t("Juz progress", "تقدم الأجزاء")
+fun Lang.juzN(c: Int) = t("Juz ${n(c)}", "الجزء ${n(c)}")
+fun Lang.ayahs(c: Int) = t("${n(c)} ayahs", "${n(c)} آية")
+val Lang.memorizedLabel get() = t("Memorized", "محفوظة")
+val Lang.tapSurahHint get() = t("Tap a surah to mark it memorized.", "اضغط على السورة لتسجيلها محفوظة.")
+
+// ---- Sins (muhasaba) ----
+val Lang.majorSins get() = t("Major sins", "الكبائر")
+val Lang.minorSins get() = t("Minor sins", "الصغائر")
+val Lang.mySins get() = t("My own items", "بنود أضفتها")
+val Lang.createPin get() = t("Create a 4-digit PIN", "أنشئ رمزًا من ٤ أرقام".let { if (arDigits) it else "أنشئ رمزًا من 4 أرقام" })
+val Lang.confirmPin get() = t("Enter the PIN again", "أعد إدخال الرمز")
+val Lang.enterPin get() = t("Enter your PIN", "أدخل الرمز")
+val Lang.wrongPin get() = t("Wrong PIN", "رمز خاطئ")
+val Lang.pinMismatch get() = t("The PINs don't match. Try again.", "الرمزان غير متطابقين. حاول مرة أخرى.")
+val Lang.pinPrivacy get() = t(
+    "This section is private. Only you can open it with your PIN.",
+    "هذا القسم خاص، ولا يُفتح إلا برمزك.",
+)
+val Lang.forgotPin get() = t("Forgot PIN?", "نسيت الرمز؟")
+val Lang.resetSinsTitle get() = t("Reset this section?", "إعادة تعيين هذا القسم؟")
+val Lang.resetSinsText get() = t(
+    "This permanently erases all records in this section and removes the PIN. Your other records are not affected.",
+    "سيؤدي هذا إلى حذف جميع سجلات هذا القسم نهائيًا وإزالة الرمز. لن تتأثر سجلاتك الأخرى.",
+)
+val Lang.erase get() = t("Erase", "حذف")
+val Lang.lock get() = t("Lock", "قفل")
+val Lang.tawbahVerse get() = "قُلْ يَا عِبَادِيَ الَّذِينَ أَسْرَفُوا عَلَىٰ أَنفُسِهِمْ لَا تَقْنَطُوا مِن رَّحْمَةِ اللَّهِ ۚ إِنَّ اللَّهَ يَغْفِرُ الذُّنُوبَ جَمِيعًا"
+val Lang.tawbahVerseEn get() = t(
+    "\u201CSay: O My servants who have transgressed against themselves, do not despair of the mercy of Allah. Indeed, Allah forgives all sins.\u201D (Az-Zumar 53)",
+    "(الزمر: ٥٣)".let { if (arDigits) it else "(الزمر: 53)" },
+)
+val Lang.sinsIntro get() = t(
+    "Tick what you fell into on this day, then seek forgiveness. Watch the days since each one grow.",
+    "حدِّد ما وقعت فيه في هذا اليوم ثم استغفر، وراقب الأيام التي تمضي دونه.",
+)
+fun Lang.sinCounts(week: Int, month: Int, all: Int) = t(
+    "Week ${n(week)} · Month ${n(month)} · All ${n(all)}",
+    "الأسبوع ${n(week)} · الشهر ${n(month)} · الكل ${n(all)}",
+)
+fun Lang.daysSince(d: Int?) = when (d) {
+    null -> t("Never", "لم يحدث")
+    0 -> t("Today", "اليوم")
+    else -> t("${daysCount(d)} since", "منذ ${daysCount(d)}")
+}
+val Lang.addItem get() = t("Add an item", "إضافة بند")
+val Lang.itemName get() = t("Name", "الاسم")
+val Lang.isMajor get() = t("Major sin", "من الكبائر")
+val Lang.delete get() = t("Delete", "حذف")
+fun Lang.deleteConfirm(name: String) = t("Delete \u201C$name\u201D?", "حذف «$name»؟")
+val Lang.todayCount get() = t("ticked on this day", "محدد في هذا اليوم")
+val Lang.classificationNote get() = t(
+    "Based on well-known scholarly lists such as al-Dhahabi's Al-Kaba'ir; scholars differ on the classification of some items.",
+    "مستند إلى قوائم العلماء المشهورة ككتاب «الكبائر» للذهبي، وقد يختلف العلماء في تصنيف بعضها.",
+)
+val Lang.changePin get() = t("Change Muhasaba PIN", "تغيير رمز محاسبة النفس")
+val Lang.oldPin get() = t("Current PIN", "الرمز الحالي")
+val Lang.newPin get() = t("New PIN", "الرمز الجديد")
+val Lang.pinChanged get() = t("PIN changed", "تم تغيير الرمز")
+val Lang.noPinYet get() = t("Open the Muhasaba section to create a PIN.", "افتح قسم محاسبة النفس لإنشاء رمز.")
+
+// ---- Reading ----
+val Lang.addBook get() = t("Add a book", "إضافة كتاب")
+val Lang.editBook get() = t("Edit book", "تعديل الكتاب")
+val Lang.bookTitle get() = t("Book title", "اسم الكتاب")
+val Lang.bookAuthor get() = t("Author", "المؤلف")
+val Lang.bookPages get() = t("Number of pages", "عدد الصفحات")
+val Lang.coverPhoto get() = t("Cover photo", "صورة الغلاف")
+val Lang.fromGallery get() = t("Gallery", "المعرض")
+val Lang.fromCamera get() = t("Camera", "الكاميرا")
+val Lang.removePhoto get() = t("Remove", "إزالة")
+val Lang.currentlyReading get() = t("Currently reading", "أقرأ حاليًا")
+val Lang.completedBooks get() = t("Completed", "كتب مكتملة")
+val Lang.noBooks get() = t("Add the book you're reading to start tracking it.", "أضف الكتاب الذي تقرؤه لتبدأ بمتابعته.")
+fun Lang.pagesOfTotal(a: Int, b: Int) = t("${n(a)} of ${n(b)} pages", "${n(a)} من ${n(b)} صفحة")
+fun Lang.pacePerDay(v: Double) = t("${dec(v)} pages/day", "${dec(v)} صفحة/يوم")
+fun Lang.finishBy(d: String) = t("Finish ≈ $d", "الإنهاء ≈ $d")
+val Lang.pagesToday get() = t("Pages read on this day", "صفحات هذا اليوم")
+val Lang.logPages get() = t("Log pages", "تسجيل الصفحات")
+val Lang.markCompleted get() = t("Mark completed", "تحديد كمكتمل")
+val Lang.markReading get() = t("Mark as reading", "إعادة إلى القراءة")
+fun Lang.finishedOn(d: String) = t("Finished $d", "أُنهي في $d")
+val Lang.bookDone get() = t("Book finished!", "أتممت الكتاب!")
+val Lang.bookDoneText get() = t("Well done. Keep reading and benefiting.", "أحسنت! واصل القراءة والانتفاع.")
+val Lang.deleteBookText get() = t("This removes the book and its reading log.", "سيتم حذف الكتاب وسجل قراءته.")
+val Lang.readingSection get() = t("Reading", "القراءة")
+val Lang.booksFinished get() = t("Books finished", "كتب مكتملة")
+val Lang.pagesReadBooks get() = t("Book pages read", "صفحات الكتب المقروءة")
+val Lang.required get() = t("Required", "مطلوب")
+
+fun Lang.fastingReminder(kinds: Set<com.ibadati.app.logic.SunnahFast>): Pair<String, String> {
+    val names = buildList {
+        if (com.ibadati.app.logic.SunnahFast.MONDAY in kinds) add(monday)
+        if (com.ibadati.app.logic.SunnahFast.THURSDAY in kinds) add(thursday)
+        if (com.ibadati.app.logic.SunnahFast.WHITE in kinds) add(t("a White Day", "من الأيام البيض"))
+    }.joinToString(t(" & ", " و"))
+    return t("Sunnah fast tomorrow", "صيام سنة غدًا") to
+        t("Tomorrow is $names. Intend to fast, in sha Allah.", "غدًا $names، انوِ الصيام إن شاء الله.")
 }

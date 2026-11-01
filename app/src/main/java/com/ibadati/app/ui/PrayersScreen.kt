@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
+import com.ibadati.app.R
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -123,12 +128,14 @@ fun PrayersScreen(state: UiState, vm: MainViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PrayerSummary(state: UiState) {
     val L = LocalLang.current
     val wc = LocalWorshipColors.current
     val logs = (0..4).map { state.prayer(it) }
     val prayed = logs.count { it.fardh }
+    val mosque = logs.count { it.status == Status.MOSQUE }
     val jamaa = logs.count { it.status == Status.JAMAA }
     val onTime = logs.count { it.status == Status.ON_TIME }
     val missed = logs.count { it.status == Status.MISSED }
@@ -150,7 +157,8 @@ private fun PrayerSummary(state: UiState) {
             Spacer(Modifier.width(18.dp))
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(L.prayedToday, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    MiniStat(L.n(mosque), L.statusMosque, wc.mosque)
                     MiniStat(L.n(jamaa), L.statusJamaa, wc.jamaa)
                     MiniStat(L.n(onTime), L.statusOnTime, wc.onTime)
                     MiniStat(L.n(missed), L.statusMissed, wc.missed)
@@ -281,10 +289,11 @@ private fun StatusButton(status: Int, color: Color?, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         val icon = when (status) {
-            Status.JAMAA -> Icons.Filled.Star
-            Status.ON_TIME -> Icons.Filled.Check
-            Status.MISSED -> Icons.Filled.Close
-            else -> Icons.Filled.Add
+            Status.MOSQUE -> painterResource(R.drawable.ic_tab_prayer)
+            Status.JAMAA -> rememberVectorPainter(Icons.Filled.Star)
+            Status.ON_TIME -> rememberVectorPainter(Icons.Filled.Check)
+            Status.MISSED -> rememberVectorPainter(Icons.Filled.Close)
+            else -> rememberVectorPainter(Icons.Filled.Add)
         }
         Icon(icon, contentDescription = null, tint = if (color != null) Color.White else cs.onSurfaceVariant, modifier = Modifier.size(22.dp))
     }

@@ -58,16 +58,17 @@ fun ReportsScreen(state: UiState) {
     val wc = LocalWorshipColors.current
     val cs = MaterialTheme.colorScheme
     var range by rememberSaveable { mutableStateOf(Range.WEEK) }
+    val single = range == Range.TODAY
     val report = remember(state.records, state.today, state.settings, range) {
         Reports.build(state.records, range, state.today, state.settings)
     }
     val streaks = remember(state.records, state.today) { Stats.streaks(state.records, state.today) }
 
     ScreenColumn {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(Range.WEEK to L.rangeWeek, Range.MONTH to L.rangeMonth, Range.YEAR to L.rangeYear, Range.ALL to L.rangeAll)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(Range.TODAY to L.rangeToday, Range.WEEK to L.rangeWeek, Range.MONTH to L.rangeMonth, Range.YEAR to L.rangeYear, Range.ALL to L.rangeAll)
                 .forEach { (r, label) ->
-                    Pill(label, selected = range == r, modifier = Modifier.weight(1f)) { range = r }
+                    Pill(label, selected = range == r, modifier = Modifier.weight(1f), compact = true) { range = r }
                 }
         }
 
@@ -96,7 +97,7 @@ fun ReportsScreen(state: UiState) {
                         Text(L.overallScore, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text(L.trackedDays(report.days), color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall)
                         Text(
-                            "${L.shortDate(report.from)} – ${L.shortDate(report.to)}",
+                            if (single) L.date(report.to) else "${L.shortDate(report.from)} – ${L.shortDate(report.to)}",
                             color = Color.White.copy(alpha = 0.75f),
                             style = MaterialTheme.typography.bodySmall,
                         )
@@ -115,17 +116,18 @@ fun ReportsScreen(state: UiState) {
             val total = report.fardhTotal
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Donut(
-                    values = listOf(report.jamaa, report.onTime, report.missed, report.notLogged),
-                    colors = listOf(wc.jamaa, wc.onTime, wc.missed, cs.outlineVariant),
+                    values = listOf(report.mosque, report.jamaa, report.onTime, report.missed, report.notLogged),
+                    colors = listOf(wc.mosque, wc.jamaa, wc.onTime, wc.missed, cs.outlineVariant),
                     modifier = Modifier.size(120.dp),
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(L.pct(report.frac(report.jamaa + report.onTime, total)), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text(L.pct(report.frac(report.mosque + report.jamaa + report.onTime, total)), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                         Text(L.prayedOnTime, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.width(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Legend(wc.mosque, L.statusMosque, L.pct(report.frac(report.mosque, total)))
                     Legend(wc.jamaa, L.statusJamaa, L.pct(report.frac(report.jamaa, total)))
                     Legend(wc.onTime, L.statusOnTime, L.pct(report.frac(report.onTime, total)))
                     Legend(wc.missed, L.statusMissed, L.pct(report.frac(report.missed, total)))
@@ -172,8 +174,10 @@ fun ReportsScreen(state: UiState) {
 
         // ---- Quran
         SectionCard(title = L.tabQuran) {
-            ChartHeader(L.pagesPerDay, report.quran.firstOrNull()?.monthly == true)
-            BarChart(report.quran, cs.primary)
+            if (!single) {
+                ChartHeader(L.pagesPerDay, report.quran.firstOrNull()?.monthly == true)
+                BarChart(report.quran, cs.primary)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile(L.n(report.quranTotal), L.totalPages, Modifier.weight(1f))
                 StatTile(L.dec(report.quranTotal.toDouble() / report.days), L.dailyAverage, Modifier.weight(1f))
@@ -190,24 +194,55 @@ fun ReportsScreen(state: UiState) {
 
         // ---- Istighfar & Salawat
         SectionCard(title = L.dhikrHeader) {
-            ChartHeader(L.istighfar, report.istighfar.firstOrNull()?.monthly == true)
-            BarChart(report.istighfar, cs.primary)
+            if (!single) {
+                ChartHeader(L.istighfar, report.istighfar.firstOrNull()?.monthly == true)
+                BarChart(report.istighfar, cs.primary)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile(L.n(report.istighfarTotal), L.total, Modifier.weight(1f))
                 StatTile(L.n(report.istighfarTotal / report.days), "${L.average} ${L.perDay}", Modifier.weight(1f))
             }
             Spacer(Modifier.height(4.dp))
-            ChartHeader(L.salawat, report.salawat.firstOrNull()?.monthly == true)
-            BarChart(report.salawat, wc.gold)
+            if (!single) {
+                ChartHeader(L.salawat, report.salawat.firstOrNull()?.monthly == true)
+                BarChart(report.salawat, wc.gold)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile(L.n(report.salawatTotal), L.total, Modifier.weight(1f), accent = wc.gold)
                 StatTile(L.n(report.salawatTotal / report.days), "${L.average} ${L.perDay}", Modifier.weight(1f), accent = wc.gold)
             }
         }
 
+        // ---- Fasting
+        SectionCard(title = L.secFasting) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StatTile(L.n(report.fastDays), L.fastingTotal, Modifier.weight(1f), accent = wc.gold)
+                StatTile(L.ofN(report.sunnahFastDone, report.sunnahFastAvailable), L.sunnahFasts, Modifier.weight(1f))
+            }
+            if (report.sunnahFastAvailable > 0) {
+                LabeledBar(L.sunnahFasts, L.pct(report.frac(report.sunnahFastDone, report.sunnahFastAvailable)), report.frac(report.sunnahFastDone, report.sunnahFastAvailable), color = wc.gold)
+            }
+        }
+
+        // ---- Reading
+        if (state.records.books.isNotEmpty()) {
+            SectionCard(title = L.readingSection) {
+                if (!single) {
+                    ChartHeader(L.pagesReadBooks, report.reading.firstOrNull()?.monthly == true)
+                    BarChart(report.reading, cs.tertiary)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatTile(L.n(report.readingTotal), L.pagesReadBooks, Modifier.weight(1f), accent = cs.tertiary)
+                    StatTile(L.n(report.booksCompleted), L.booksFinished, Modifier.weight(1f), accent = cs.tertiary)
+                }
+            }
+        }
+
         // ---- Heatmap
-        SectionCard(title = L.heatmapTitle) {
-            Heatmap(state)
+        if (!single) {
+            SectionCard(title = L.heatmapTitle) {
+                Heatmap(state)
+            }
         }
     }
 }
@@ -230,7 +265,7 @@ private fun Legend(color: Color, label: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(color))
         Spacer(Modifier.width(8.dp))
-        Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(78.dp), maxLines = 1)
+        Text(label, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(96.dp), maxLines = 1)
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
     }
 }
