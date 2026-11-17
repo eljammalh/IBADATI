@@ -112,6 +112,63 @@ data class Book(
 @Entity(tableName = "reading_logs", primaryKeys = ["bookId", "day"])
 data class ReadingLog(val bookId: Long, val day: Long, val pages: Int)
 
+/** A habit the user is building. Current target/minimum mirror the latest round. */
+@Entity(tableName = "habits")
+data class Habit(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** Emoji shown as the habit's icon. */
+    val icon: String,
+    /** Index into the habit color palette. */
+    val color: Int,
+    /** HabitType.CHECK or HabitType.AMOUNT. */
+    val type: Int,
+    /** Unit key (pages, ayahs, minutes, times, rakaat) or the user's own unit text. */
+    val unit: String,
+    val target: Double,
+    val minimum: Double,
+    /** Freq.DAILY, Freq.DAYS or Freq.PER_WEEK. */
+    val freq: Int,
+    /** Bit (dayOfWeek - 1) set = scheduled that weekday (Freq.DAYS). */
+    val days: Int,
+    /** Times per week (Freq.PER_WEEK). */
+    val perWeek: Int,
+    val goalDays: Int,
+    /** Anchor key (fajr, dhuhr, … wake, sleep, custom). */
+    val anchor: String,
+    /** The user's own anchor text when anchor = custom. */
+    val anchorText: String,
+    /** Misses allowed in a round before it resets (0 = first miss resets). */
+    val strikes: Int,
+    val reminder: Boolean,
+    val remHour: Int,
+    val remMinute: Int,
+    /** Key of app data this habit completes from automatically, or null. */
+    val link: String?,
+    /** Template key it was created from, or null for custom. */
+    val template: String?,
+    /** Paused periods "start-end;start-" (epoch days, open end = still paused). */
+    val pauses: String,
+    val archived: Boolean,
+    val created: Long,
+)
+
+/** What was done for a habit on one day. CHECK habits: 1 = done, 0.5 = minimum. */
+@Entity(tableName = "habit_logs", primaryKeys = ["habitId", "day"])
+data class HabitLog(val habitId: Long, val day: Long, val amount: Double)
+
+/** One goal round of a habit (staying, levelling up or easing all start a new round). */
+@Entity(tableName = "habit_rounds")
+data class HabitRound(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val habitId: Long,
+    val level: Int,
+    val target: Double,
+    val minimum: Double,
+    val goalDays: Int,
+    val startDay: Long,
+)
+
 @Dao
 interface WorshipDao {
     // ---- Live data ----
@@ -139,6 +196,15 @@ interface WorshipDao {
     @Query("SELECT * FROM reading_logs")
     fun readingLogs(): Flow<List<ReadingLog>>
 
+    @Query("SELECT * FROM habits ORDER BY id")
+    fun habits(): Flow<List<Habit>>
+
+    @Query("SELECT * FROM habit_logs")
+    fun habitLogs(): Flow<List<HabitLog>>
+
+    @Query("SELECT * FROM habit_rounds ORDER BY habitId, startDay, id")
+    fun habitRounds(): Flow<List<HabitRound>>
+
     // ---- One-off reads ----
     @Query("SELECT * FROM days ORDER BY day")
     suspend fun allDays(): List<DayLog>
@@ -163,6 +229,21 @@ interface WorshipDao {
 
     @Query("SELECT * FROM reading_logs")
     suspend fun allReadingLogs(): List<ReadingLog>
+
+    @Query("SELECT * FROM habits ORDER BY id")
+    suspend fun allHabits(): List<Habit>
+
+    @Query("SELECT * FROM habit_logs")
+    suspend fun allHabitLogs(): List<HabitLog>
+
+    @Query("SELECT * FROM habit_rounds ORDER BY habitId, startDay, id")
+    suspend fun allHabitRounds(): List<HabitRound>
+
+    @Query("SELECT * FROM habits WHERE id = :id")
+    suspend fun habit(id: Long): Habit?
+
+    @Query("SELECT * FROM habit_rounds WHERE habitId = :id ORDER BY startDay, id")
+    suspend fun roundsOf(id: Long): List<HabitRound>
 
     @Query("SELECT * FROM days WHERE day = :day")
     suspend fun day(day: Long): DayLog?
@@ -222,6 +303,29 @@ interface WorshipDao {
     @Query("DELETE FROM reading_logs WHERE bookId = :bookId AND day = :day")
     suspend fun deleteReading(bookId: Long, day: Long)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putHabit(h: Habit): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putHabitLog(l: HabitLog)
+
+    @Query("DELETE FROM habit_logs WHERE habitId = :id AND day = :day")
+    suspend fun deleteHabitLog(id: Long, day: Long)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun putHabitRound(r: HabitRound): Long
+
+    @Transaction
+    suspend fun deleteHabitFully(id: Long) {
+        deleteHabitLogsFor(id)
+        deleteHabitRoundsFor(id)
+        deleteHabit(id)
+    }
+
+    @Query("DELETE FROM habits WHERE id = :id") suspend fun deleteHabit(id: Long)
+    @Query("DELETE FROM habit_logs WHERE habitId = :id") suspend fun deleteHabitLogsFor(id: Long)
+    @Query("DELETE FROM habit_rounds WHERE habitId = :id") suspend fun deleteHabitRoundsFor(id: Long)
+
     // ---- Bulk (backup restore, sins reset) ----
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDays(d: List<DayLog>)
@@ -246,6 +350,19 @@ interface WorshipDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReadingLogs(r: List<ReadingLog>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHabits(h: List<Habit>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHabitLogs(l: List<HabitLog>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHabitRounds(r: List<HabitRound>)
+
+    @Query("DELETE FROM habits") suspend fun clearHabits()
+    @Query("DELETE FROM habit_logs") suspend fun clearHabitLogs()
+    @Query("DELETE FROM habit_rounds") suspend fun clearHabitRounds()
 
     @Query("DELETE FROM days") suspend fun clearDays()
     @Query("DELETE FROM prayers") suspend fun clearPrayers()
@@ -272,6 +389,9 @@ interface WorshipDao {
         clearCustomSins()
         clearBooks()
         clearReadingLogs()
+        clearHabits()
+        clearHabitLogs()
+        clearHabitRounds()
         insertDays(d.days)
         insertPrayers(d.prayers)
         insertKhatmas(d.khatmas)
@@ -280,6 +400,9 @@ interface WorshipDao {
         insertCustomSins(d.customSins)
         insertBooks(d.books)
         insertReadingLogs(d.readingLogs)
+        insertHabits(d.habits)
+        insertHabitLogs(d.habitLogs)
+        insertHabitRounds(d.habitRounds)
     }
 }
 
@@ -298,12 +421,32 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/** Version 2 → 3: habits. Keeps every existing record. */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS habits (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, name TEXT NOT NULL, " +
+                "icon TEXT NOT NULL, color INTEGER NOT NULL, type INTEGER NOT NULL, unit TEXT NOT NULL, target REAL NOT NULL, " +
+                "minimum REAL NOT NULL, freq INTEGER NOT NULL, days INTEGER NOT NULL, perWeek INTEGER NOT NULL, " +
+                "goalDays INTEGER NOT NULL, anchor TEXT NOT NULL, anchorText TEXT NOT NULL, strikes INTEGER NOT NULL, " +
+                "reminder INTEGER NOT NULL, remHour INTEGER NOT NULL, remMinute INTEGER NOT NULL, link TEXT, template TEXT, " +
+                "pauses TEXT NOT NULL, archived INTEGER NOT NULL, created INTEGER NOT NULL)",
+        )
+        db.execSQL("CREATE TABLE IF NOT EXISTS habit_logs (habitId INTEGER NOT NULL, day INTEGER NOT NULL, amount REAL NOT NULL, PRIMARY KEY(habitId, day))")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS habit_rounds (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, habitId INTEGER NOT NULL, " +
+                "level INTEGER NOT NULL, target REAL NOT NULL, minimum REAL NOT NULL, goalDays INTEGER NOT NULL, startDay INTEGER NOT NULL)",
+        )
+    }
+}
+
 @Database(
     entities = [
         DayLog::class, PrayerLog::class, Khatma::class, Memorized::class,
         SinLog::class, CustomSin::class, Book::class, ReadingLog::class,
+        Habit::class, HabitLog::class, HabitRound::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -314,7 +457,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "ibadati.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build().also { instance = it }
         }
     }

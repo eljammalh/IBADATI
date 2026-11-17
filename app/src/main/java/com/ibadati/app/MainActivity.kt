@@ -65,6 +65,8 @@ import com.ibadati.app.ui.PrayersScreen
 import com.ibadati.app.ui.QuranScreen
 import com.ibadati.app.ui.ReportsScreen
 import com.ibadati.app.ui.ChallengeScreen
+import com.ibadati.app.ui.HabitsScreen
+import com.ibadati.app.ui.tabHabits
 import com.ibadati.app.ui.FastingScreen
 import com.ibadati.app.ui.HifzScreen
 import com.ibadati.app.ui.MoreScreen
@@ -146,7 +148,7 @@ private fun AppRoot(state: UiState, vm: MainViewModel) {
         Tab(L.tabPrayers, R.drawable.ic_tab_prayer),
         Tab(L.tabAthkar, R.drawable.ic_tab_athkar),
         Tab(L.tabQuran, R.drawable.ic_tab_quran),
-        Tab(L.tabDhikr, R.drawable.ic_tab_dhikr),
+        Tab(L.tabHabits, R.drawable.ic_tab_habits),
         Tab(L.tabMore, R.drawable.ic_tab_more),
     )
     val openSection = if (tab == MORE) section else null
@@ -251,7 +253,8 @@ private fun AppRoot(state: UiState, vm: MainViewModel) {
                         "tab:0" -> PrayersScreen(state, vm)
                         "tab:1" -> AthkarScreen(state, vm)
                         "tab:2" -> QuranScreen(state, vm)
-                        "tab:3" -> DhikrScreen(state, vm)
+                        "tab:3" -> HabitsScreen(state, vm)
+                        "more:" + Section.DHIKR -> DhikrScreen(state, vm)
                         "more:" + Section.CHALLENGE -> ChallengeScreen(state, vm)
                         "more:" + Section.FASTING -> FastingScreen(state, vm)
                         "more:" + Section.HIFZ -> HifzScreen(state, vm)

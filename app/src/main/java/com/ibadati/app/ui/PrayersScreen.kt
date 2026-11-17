@@ -10,6 +10,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.unit.sp
+import com.ibadati.app.data.HabitType
+import com.ibadati.app.logic.DayMark
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -60,7 +72,21 @@ fun PrayersScreen(state: UiState, vm: MainViewModel) {
     var rakaatFor by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
     var witrPicker by remember { mutableStateOf(false) }
     var qiyamPicker by remember { mutableStateOf(false) }
+    var nudgePrayer by remember { mutableStateOf<Int?>(null) }
+    val prayerKeys = listOf("fajr", "dhuhr", "asr", "maghrib", "isha")
+    val nudgeHabits = nudgePrayer?.let { p ->
+        state.habitStates.filter {
+            it.habit.anchor == prayerKeys[p] && !it.habit.archived && it.mark(state.selected) == DayMark.PENDING && it.habit.link == null
+        }
+    } ?: emptyList()
+    LaunchedEffect(nudgePrayer) {
+        if (nudgePrayer != null) {
+            delay(12_000)
+            nudgePrayer = null
+        }
+    }
 
+    Box(Modifier.fillMaxSize()) {
     ScreenColumn {
         DateNavigator(state.selected, state.today, state.settings.showHijri, state.records::hasAnyData, vm::selectDay)
         PrayerSummary(state)
@@ -74,7 +100,10 @@ fun PrayersScreen(state: UiState, vm: MainViewModel) {
                 hasAfter = def.after > 0,
                 fardhRakaat = def.fardh,
                 flexible = def.flexible,
-                onFardh = { vm.toggleFardh(def.index) },
+                onFardh = {
+                    if (!state.prayer(def.index).fardh) nudgePrayer = def.index
+                    vm.toggleFardh(def.index)
+                },
                 onBefore = { vm.toggleSunnahBefore(def.index) },
                 onAfter = { vm.toggleSunnahAfter(def.index) },
                 onLongBefore = { rakaatFor = def.index to true },
@@ -94,8 +123,42 @@ fun PrayersScreen(state: UiState, vm: MainViewModel) {
         NightPrayerRow(L.qiyam, L.qiyamHint, state.day.qiyam) { qiyamPicker = true }
     }
 
+    // After marking a prayer: gently show the habits stacked on it.
+    AnimatedVisibility(
+        visible = nudgeHabits.isNotEmpty(),
+        enter = slideInVertically { it } + fadeIn(),
+        exit = slideOutVertically { it } + fadeOut(),
+        modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp),
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.inverseSurface),
+        ) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                nudgeHabits.take(3).forEach { hs ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(hs.habit.icon, fontSize = 18.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            L.nextHabitNudge(if (hs.habit.type == HabitType.CHECK) hs.habit.name else hs.habit.name + " · " + L.amountWithUnit(hs.round.target, hs.habit.unit)),
+                            color = MaterialTheme.colorScheme.inverseOnSurface,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 2,
+                        )
+                        TextButton(onClick = {
+                            vm.setHabitValue(hs.habit.id, if (hs.habit.type == HabitType.CHECK) 1.0 else hs.round.target, state.selected)
+                        }) { Text(L.markDone, color = MaterialTheme.colorScheme.inversePrimary, fontWeight = FontWeight.Bold) }
+                    }
+                }
+            }
+        }
+    }
+    }
+
     statusFor?.let { i ->
         StatusDialog(L.prayerName(Prayers.all[i]), state.prayer(i).status, onDismiss = { statusFor = null }) {
+            if (Status.prayed(it)) nudgePrayer = i
             vm.setStatus(i, it)
             statusFor = null
         }

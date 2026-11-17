@@ -46,6 +46,7 @@ object Section {
     const val READING = "reading"
     const val REPORTS = "reports"
     const val SINS = "sins"
+    const val DHIKR = "dhikr"
 }
 
 @Composable
@@ -57,6 +58,7 @@ fun sectionTitle(key: String): String {
         Section.HIFZ -> L.secHifz
         Section.READING -> L.secReading
         Section.REPORTS -> L.tabReports
+        Section.DHIKR -> L.dhikrHeader
         else -> L.secSins
     }
 }
@@ -74,6 +76,11 @@ fun MoreScreen(state: UiState, onOpen: (String) -> Unit) {
     val readingNow = state.records.books.count { it.completedDay == null }
 
     val items = listOf(
+        MoreItem(
+            Section.DHIKR, L.tabDhikr, L.t("Istighfar & Salawat", "الاستغفار والصلاة على النبي ﷺ"),
+            state.day.let { d -> if (d.istighfar + d.salawat > 0) L.n(d.istighfar + d.salawat) else null },
+            Color(0xFF00897B), painterResource(R.drawable.ic_tab_dhikr),
+        ),
         MoreItem(Section.CHALLENGE, L.secChallenge, L.secChallengeHint, L.digits("${challenge.current}/40"), wc.mosque, painterResource(R.drawable.ic_tab_prayer)),
         MoreItem(
             Section.FASTING, L.secFasting, L.secFastingHint,

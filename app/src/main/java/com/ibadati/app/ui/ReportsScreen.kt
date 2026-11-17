@@ -213,6 +213,31 @@ fun ReportsScreen(state: UiState) {
             }
         }
 
+        // ---- Habits
+        val habitStates = state.habitStates.filter { !it.habit.archived }
+        if (habitStates.isNotEmpty()) {
+            SectionCard(title = L.habitsReport) {
+                habitStates.forEach { hs ->
+                    val (done, due) = habitCompletion(hs, report.from, report.to)
+                    val color = habitColor(hs.habit.color)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(hs.habit.icon, fontSize = 18.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(hs.habit.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 1)
+                            Text(L.pct(report.frac(done, due)), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = color)
+                        }
+                        Bar(report.frac(done, due), color = color)
+                        Text(
+                            "${L.currentStreakLabel} ${L.n(hs.streak)} · ${L.bestStreakLabel} ${L.n(hs.best)} · ${L.strength} ${L.pct(hs.strength)} · ${L.levelN(hs.level)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = cs.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+
         // ---- Fasting
         SectionCard(title = L.secFasting) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -428,4 +453,22 @@ private fun Heatmap(state: UiState) {
         }
         Text(L.more, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
     }
+}
+
+/** (days done, days due) for a habit between two days. X-times-a-week habits are due perWeek/7 of the days. */
+private fun habitCompletion(s: com.ibadati.app.logic.HabitState, from: Long, to: Long): Pair<Int, Int> {
+    var done = 0
+    var due = 0
+    for (d in from..to) {
+        when (s.mark(d)) {
+            com.ibadati.app.logic.DayMark.DONE, com.ibadati.app.logic.DayMark.MIN -> { done++; due++ }
+            com.ibadati.app.logic.DayMark.MISS, com.ibadati.app.logic.DayMark.PENDING -> due++
+            com.ibadati.app.logic.DayMark.OFF -> if (s.habit.freq == com.ibadati.app.data.Freq.PER_WEEK) due++
+            else -> {}
+        }
+    }
+    if (s.habit.freq == com.ibadati.app.data.Freq.PER_WEEK && due > 0) {
+        due = maxOf(done, Math.round(due * s.habit.perWeek / 7.0).toInt())
+    }
+    return done to due
 }

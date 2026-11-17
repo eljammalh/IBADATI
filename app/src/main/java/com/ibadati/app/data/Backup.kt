@@ -6,7 +6,7 @@ import org.json.JSONObject
 /** Converts all records to and from a JSON backup file. Book covers are embedded as Base64. */
 object Backup {
     private const val FORMAT = "ibadati-backup"
-    private const val VERSION = 2
+    private const val VERSION = 3
 
     data class Data(
         val days: List<DayLog>,
@@ -17,6 +17,9 @@ object Backup {
         val customSins: List<CustomSin> = emptyList(),
         val books: List<Book> = emptyList(),
         val readingLogs: List<ReadingLog> = emptyList(),
+        val habits: List<Habit> = emptyList(),
+        val habitLogs: List<HabitLog> = emptyList(),
+        val habitRounds: List<HabitRound> = emptyList(),
         /** Cover file name → Base64 JPEG. */
         val covers: Map<String, String> = emptyMap(),
     )
@@ -57,6 +60,21 @@ object Backup {
             put("added", b.addedDay); if (b.completedDay != null) put("completed", b.completedDay)
         })
         root.put("readingLogs", arr(d.readingLogs) { r -> put("book", r.bookId); put("day", r.day); put("pages", r.pages) })
+        root.put("habits", arr(d.habits) { h ->
+            put("id", h.id); put("name", h.name); put("icon", h.icon); put("color", h.color); put("type", h.type)
+            put("unit", h.unit); put("target", h.target); put("minimum", h.minimum); put("freq", h.freq)
+            put("days", h.days); put("perWeek", h.perWeek); put("goalDays", h.goalDays); put("anchor", h.anchor)
+            put("anchorText", h.anchorText); put("strikes", h.strikes); put("reminder", h.reminder)
+            put("remHour", h.remHour); put("remMinute", h.remMinute)
+            if (h.link != null) put("link", h.link)
+            if (h.template != null) put("template", h.template)
+            put("pauses", h.pauses); put("archived", h.archived); put("created", h.created)
+        })
+        root.put("habitLogs", arr(d.habitLogs) { l -> put("habit", l.habitId); put("day", l.day); put("amount", l.amount) })
+        root.put("habitRounds", arr(d.habitRounds) { x ->
+            put("id", x.id); put("habit", x.habitId); put("level", x.level); put("target", x.target)
+            put("minimum", x.minimum); put("goalDays", x.goalDays); put("start", x.startDay)
+        })
         root.put("covers", JSONObject().apply { d.covers.forEach { (k, v) -> put(k, v) } })
         return root.toString()
     }
@@ -114,8 +132,28 @@ object Backup {
             )
         }
         val readingLogs = root.list("readingLogs") { o -> ReadingLog(o.getLong("book"), o.getLong("day"), o.optInt("pages")) }
+        val habits = root.list("habits") { o ->
+            Habit(
+                id = o.getLong("id"), name = o.getString("name"), icon = o.optString("icon", "⭐"), color = o.optInt("color"),
+                type = o.optInt("type"), unit = o.optString("unit"), target = o.optDouble("target", 1.0),
+                minimum = o.optDouble("minimum", 1.0), freq = o.optInt("freq"), days = o.optInt("days", 127),
+                perWeek = o.optInt("perWeek", 3), goalDays = o.optInt("goalDays", 40), anchor = o.optString("anchor", "wake"),
+                anchorText = o.optString("anchorText"), strikes = o.optInt("strikes"), reminder = o.optBoolean("reminder"),
+                remHour = o.optInt("remHour", 8), remMinute = o.optInt("remMinute"),
+                link = if (o.has("link")) o.getString("link") else null,
+                template = if (o.has("template")) o.getString("template") else null,
+                pauses = o.optString("pauses"), archived = o.optBoolean("archived"), created = o.optLong("created"),
+            )
+        }
+        val habitLogs = root.list("habitLogs") { o -> HabitLog(o.getLong("habit"), o.getLong("day"), o.optDouble("amount", 0.0)) }
+        val habitRounds = root.list("habitRounds") { o ->
+            HabitRound(
+                o.getLong("id"), o.getLong("habit"), o.optInt("level", 1), o.optDouble("target", 1.0),
+                o.optDouble("minimum", 1.0), o.optInt("goalDays", 40), o.getLong("start"),
+            )
+        }
         val covers = mutableMapOf<String, String>()
         root.optJSONObject("covers")?.let { c -> c.keys().forEach { k -> covers[k] = c.getString(k) } }
-        return Data(days, prayers, khatmas, memorized, sinLogs, customSins, books, readingLogs, covers)
+        return Data(days, prayers, khatmas, memorized, sinLogs, customSins, books, readingLogs, habits, habitLogs, habitRounds, covers)
     }
 }

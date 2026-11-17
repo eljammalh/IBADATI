@@ -28,6 +28,11 @@ data class Records(
     val books: List<Book> = emptyList(),
     /** book id → (day → pages). */
     val reading: Map<Long, Map<Long, Int>> = emptyMap(),
+    val habits: List<com.ibadati.app.data.Habit> = emptyList(),
+    /** habit id → (day → amount). */
+    val habitLogs: Map<Long, Map<Long, Double>> = emptyMap(),
+    /** habit id → rounds, oldest first. */
+    val habitRounds: Map<Long, List<com.ibadati.app.data.HabitRound>> = emptyMap(),
 ) {
     fun day(d: Long): DayLog = days[d] ?: DayLog(d)
     fun prayer(d: Long, i: Int): PrayerLog = prayers[d]?.get(i) ?: Prayers.default(d, i)

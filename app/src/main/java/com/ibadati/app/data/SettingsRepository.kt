@@ -6,6 +6,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -53,6 +55,12 @@ data class Settings(
     val sinsPin: String? = null,
     /** How many completed 40-day challenges have already been celebrated. */
     val challengesSeen: Int = 0,
+    /** The habits introduction (tips) has been shown. */
+    val habitTipsSeen: Boolean = false,
+    /** Habit round ids whose goal celebration was already shown. */
+    val celebratedRounds: Set<Long> = emptySet(),
+    /** Day the tip of the day was dismissed (hidden for the rest of that day). */
+    val tipDismissedDay: Long = -1,
     val reminders: Map<String, ReminderSetting> = Reminder.TYPES.associateWith {
         val (h, m) = Reminder.defaultTime(it)
         ReminderSetting(false, h, m)
@@ -72,6 +80,9 @@ class SettingsRepository(private val context: Context) {
         val quranGoal = intPreferencesKey("goal_quran")
         val sinsPin = stringPreferencesKey("sins_pin")
         val challengesSeen = intPreferencesKey("challenges_seen")
+        val habitTips = booleanPreferencesKey("habit_tips_seen")
+        val celebrated = stringSetPreferencesKey("celebrated_rounds")
+        val tipDismissed = longPreferencesKey("tip_dismissed_day")
         fun remOn(t: String) = booleanPreferencesKey("rem_${t}_on")
         fun remH(t: String) = intPreferencesKey("rem_${t}_h")
         fun remM(t: String) = intPreferencesKey("rem_${t}_m")
@@ -93,6 +104,9 @@ class SettingsRepository(private val context: Context) {
             quranGoal = p[K.quranGoal] ?: d.quranGoal,
             sinsPin = p[K.sinsPin],
             challengesSeen = p[K.challengesSeen] ?: d.challengesSeen,
+            habitTipsSeen = p[K.habitTips] ?: false,
+            celebratedRounds = p[K.celebrated]?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet(),
+            tipDismissedDay = p[K.tipDismissed] ?: -1L,
             reminders = Reminder.TYPES.associateWith { t ->
                 val (h, m) = Reminder.defaultTime(t)
                 ReminderSetting(p[K.remOn(t)] ?: false, p[K.remH(t)] ?: h, p[K.remM(t)] ?: m)
@@ -127,6 +141,14 @@ class SettingsRepository(private val context: Context) {
     suspend fun setSinsPin(hash: String?) {
         context.dataStore.edit { if (hash == null) it.remove(K.sinsPin) else it[K.sinsPin] = hash }
     }
+
+    suspend fun setHabitTipsSeen() { context.dataStore.edit { it[K.habitTips] = true } }
+
+    suspend fun addCelebratedRound(id: Long) {
+        context.dataStore.edit { it[K.celebrated] = (it[K.celebrated] ?: emptySet()) + id.toString() }
+    }
+
+    suspend fun setTipDismissedDay(day: Long) { context.dataStore.edit { it[K.tipDismissed] = day } }
 
     suspend fun setChallengesSeen(n: Int) { context.dataStore.edit { it[K.challengesSeen] = n } }
 

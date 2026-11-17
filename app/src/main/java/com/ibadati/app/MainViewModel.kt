@@ -15,6 +15,11 @@ import com.ibadati.app.data.ReadingLog
 import com.ibadati.app.data.SinLog
 import com.ibadati.app.data.Sins
 import com.ibadati.app.logic.Reading
+import com.ibadati.app.logic.HabitEngine
+import com.ibadati.app.logic.HabitState
+import com.ibadati.app.data.Habit
+import com.ibadati.app.data.HabitLog
+import com.ibadati.app.data.HabitRound
 import com.ibadati.app.ui.Images
 import androidx.core.content.FileProvider
 import java.io.File
@@ -54,6 +59,13 @@ data class UiState(
 ) {
     val isToday: Boolean get() = selected == today
     val day: DayLog get() = records.day(selected)
+
+    /** Every habit's computed state (streaks, rounds, marks) as of today. */
+    val habitStates: List<HabitState> by lazy {
+        records.habits.map { h ->
+            HabitEngine.compute(h, records.habitRounds[h.id] ?: emptyList(), records.habitLogs[h.id] ?: emptyMap(), records, today)
+        }
+    }
     fun prayer(i: Int): PrayerLog = records.prayer(selected, i)
 }
 
@@ -81,7 +93,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    private val recordsFlow = combine(
+    private val personalFlow = combine(
         worshipFlow, dao.sinLogs(), dao.customSins(), dao.books(), dao.readingLogs(),
     ) { base, sins, custom, books, reading ->
         base.copy(
@@ -89,6 +101,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             customSins = custom,
             books = books,
             reading = Reading.logsOf(reading),
+        )
+    }
+
+    private val recordsFlow = combine(personalFlow, dao.habits(), dao.habitLogs(), dao.habitRounds()) { base, habits, logs, rounds ->
+        base.copy(
+            habits = habits,
+            habitLogs = logs.groupBy { it.habitId }.mapValues { (_, l) -> l.associate { it.day to it.amount } },
+            habitRounds = rounds.groupBy { it.habitId },
         )
     }
 
@@ -384,6 +404,90 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---- Habits ----
+
+    /** Creates or updates a habit. A new habit gets its first round (level 1) starting today. */
+    fun saveHabit(h: Habit, onSaved: (Long) -> Unit = {}) = viewModelScope.launch {
+        var id = h.id
+        writeLock.withLock {
+            if (h.id == 0L) {
+                id = dao.putHabit(h.copy(created = state.value.today))
+                dao.putHabitRound(HabitRound(habitId = id, level = 1, target = h.target, minimum = h.minimum, goalDays = h.goalDays, startDay = state.value.today))
+            } else {
+                dao.putHabit(h)
+                // Edits apply to the current round (they are corrections, not level changes).
+                dao.roundsOf(h.id).lastOrNull()?.let {
+                    dao.putHabitRound(it.copy(target = h.target, minimum = h.minimum, goalDays = h.goalDays))
+                }
+            }
+        }
+        Reminders.scheduleHabit(getApplication(), id, h.reminder && !h.archived, h.remHour, h.remMinute)
+        onSaved(id)
+    }
+
+    /** Sets the amount for a habit on the selected day (CHECK: 1 done, 0.5 minimum, 0 clear). */
+    fun setHabitValue(habitId: Long, amount: Double, day: Long = state.value.selected) = viewModelScope.launch {
+        if (day > state.value.today) return@launch
+        writeLock.withLock {
+            if (amount <= 0.0) dao.deleteHabitLog(habitId, day) else dao.putHabitLog(HabitLog(habitId, day, amount))
+        }
+    }
+
+    /** Starts the next round after a goal is reached: stay, level up, or ease (new target/minimum). */
+    fun nextRound(s: HabitState, levelDelta: Int, target: Double, minimum: Double, goalDays: Int) = viewModelScope.launch {
+        val start = (s.goalReachedDay ?: state.value.today) + 1
+        writeLock.withLock {
+            dao.putHabitRound(
+                HabitRound(
+                    habitId = s.habit.id,
+                    level = (s.level + levelDelta).coerceAtLeast(1),
+                    target = target,
+                    minimum = minimum.coerceAtMost(target),
+                    goalDays = goalDays.coerceAtLeast(1),
+                    startDay = start,
+                ),
+            )
+            dao.putHabit(s.habit.copy(target = target, minimum = minimum.coerceAtMost(target), goalDays = goalDays.coerceAtLeast(1)))
+        }
+    }
+
+    fun setHabitPaused(h: Habit, paused: Boolean) = viewModelScope.launch {
+        val today = state.value.today
+        val pauses = if (paused) {
+            if (HabitEngine.isPaused(h)) h.pauses else (if (h.pauses.isBlank()) "" else h.pauses + ";") + "$today-"
+        } else {
+            h.pauses.split(";").filter { it.isNotBlank() }.joinToString(";") {
+                if (it.endsWith("-")) it + (today - 1) else it
+            }
+        }
+        writeLock.withLock { dao.putHabit(h.copy(pauses = pauses)) }
+        Reminders.scheduleHabit(getApplication(), h.id, h.reminder && !paused && !h.archived, h.remHour, h.remMinute)
+    }
+
+    fun setHabitArchived(h: Habit, archived: Boolean) = viewModelScope.launch {
+        val today = state.value.today
+        val pauses = if (archived) {
+            if (HabitEngine.isPaused(h)) h.pauses else (if (h.pauses.isBlank()) "" else h.pauses + ";") + "$today-"
+        } else {
+            h.pauses.split(";").filter { it.isNotBlank() }.joinToString(";") {
+                if (it.endsWith("-")) it + (today - 1) else it
+            }
+        }
+        writeLock.withLock { dao.putHabit(h.copy(archived = archived, pauses = pauses)) }
+        Reminders.scheduleHabit(getApplication(), h.id, h.reminder && !archived, h.remHour, h.remMinute)
+    }
+
+    fun deleteHabit(h: Habit) = viewModelScope.launch {
+        writeLock.withLock { dao.deleteHabitFully(h.id) }
+        Reminders.scheduleHabit(getApplication(), h.id, false, 0, 0)
+    }
+
+    fun dismissTipToday() = viewModelScope.launch { repo.setTipDismissedDay(state.value.today) }
+
+    fun setHabitTipsSeen() = viewModelScope.launch { repo.setHabitTipsSeen() }
+
+    fun markRoundCelebrated(roundId: Long) = viewModelScope.launch { repo.addCelebratedRound(roundId) }
+
     // ---- Settings ----
 
     fun chooseLanguage(arabic: Boolean) = viewModelScope.launch { repo.chooseLanguage(arabic) }
@@ -417,8 +521,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }.toMap()
                 val json = Backup.toJson(
                     Backup.Data(
-                        dao.allDays(), dao.allPrayers(), dao.allKhatmas(), dao.allMemorized(),
-                        dao.allSinLogs(), dao.allCustomSins(), books, dao.allReadingLogs(), covers,
+                        days = dao.allDays(), prayers = dao.allPrayers(), khatmas = dao.allKhatmas(),
+                        memorized = dao.allMemorized(), sinLogs = dao.allSinLogs(), customSins = dao.allCustomSins(),
+                        books = books, readingLogs = dao.allReadingLogs(), habits = dao.allHabits(),
+                        habitLogs = dao.allHabitLogs(), habitRounds = dao.allHabitRounds(), covers = covers,
                     ),
                 )
                 getApplication<Application>().contentResolver.openOutputStream(uri, "wt")?.use {

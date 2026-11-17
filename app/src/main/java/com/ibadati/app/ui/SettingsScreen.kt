@@ -176,7 +176,7 @@ fun SettingsScreen(state: UiState, vm: MainViewModel, onBack: () -> Unit) {
             SectionCard(title = L.about) {
                 Text(L.appName, fontFamily = Amiri, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Text(L.aboutText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(L.digits("1.1"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(L.digits("1.2"), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
